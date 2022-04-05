@@ -1,39 +1,34 @@
-## 前言
+## lời tựa
 
-由于TensorRT并未实现Einsum插件，而在转换GCN的过程中，网络频繁使用该op，因此，不得已手写plugin，顺便也学习了一下plugin的编写及注册方法。本仓库也旨在演示如何自定义编写的plugin。
+Vì TensorRT không triển khai plugin Einsum và mạng thường xuyên sử dụng tùy chọn này trong quá trình chuyển đổi GCN, do đó, plugin phải được viết bằng tay và nhân tiện, tôi cũng đã học cách viết và đăng ký plugin vào. Kho lưu trữ này cũng nhằm trình bày cách tùy chỉnh plugin đã viết. 4 5 Trong file plugin, chức năng của từng chức năng thành viên được chú thích đơn giản (có thể còn nhiều chỗ chưa rõ ràng, nên tìm hiểu thêm trên Baidu)
 
-在plugin文件内，对每个成员函数的功能都进行了简单的注释（可能会有很多不清楚的地方，建议自行百度详细了解一下）
+Hướng dẫn này rất được khuyến khích [triển khai quyền tự do của các plugin tùy chỉnh TensorRT] (https://zhuanlan.zhihu.com/p/297002406). Theo hướng dẫn này, bạn chắc chắn có thể tạo các plugin có thể sử dụng được. Hiện tại, tất cả các bạn có thể tìm thấy trực tuyến là Biên dịch trực tiếp và tạo một `libnvinfer_plugin.so` mới để thay thế thư viện gốc chính thức. Tuy nhiên, không thể sử dụng phương pháp này khi phiên bản TensorRT-OSS không khớp với TensorRT, vì vậy đây là một phương pháp khác linh hoạt hơn: ** trực tiếp Biên dịch EinsumPlugin thành dự án dự án của riêng bạn **.
+Kho này ** chỉ thực hiện thao tác `nctkv, kvw-> nctw` **, các cấu trúc khác tương tự, bạn có thể tự mình sửa đổi plug-in và tạo phiên bản phù hợp cho riêng mình.
 
-强烈推荐这个教程[实现TensorRT自定义插件(plugin)自由](https://zhuanlan.zhihu.com/p/297002406)，按照这个教程肯定可以生成可以用的Plugin，目前网上搜到的都是直接重新编译生成新的`libnvinfer_plugin.so`替换官方原有的该库，然而这种方法在TensorRT-OSS版本不匹配TensorRT时就不能使用了，因此这里采用另一种更加灵活的方法：**直接将EinsumPlugin编译到自己的项目工程里即可**。
-
-本仓库**只实现了`nctkv,kvw->nctw`操作**，其他结构也都类似，自行修改插件，制作适合自己版本的即可。
-
-## 环境
+## Môi trường
 
 > TensorRT8.0
 
-TensorRT8.0相比以前版本的最大区别就是该版本的plugin必须在每个成员函数之后增加一个`throw()`，看`Einsum.cpp`程序就懂了。TensorRT7.0也可以使用，不需要修改任何代码。
+Sự khác biệt lớn nhất giữa TensorRT8.0 và phiên bản trước là plugin của phiên bản này phải thêm một `throw()` sau mỗi hàm thành viên. Bạn có thể hiểu điều đó bằng cách xem chương trình `Einsum.cpp`. TensorRT7.0 cũng có thể được sử dụng mà không cần sửa đổi mã nào.
 
-如果想要使用TensorRT7，直接在`einsum/CMakeLists.txt`内修改TensorRT路径，并切换到`einsum_common7`即可
+Nếu bạn muốn sử dụng TensorRT7, hãy sửa đổi đường dẫn TensorRT trực tiếp trong `einsum/CMakeLists.txt` và chuyển sang` einsum_common7 '
 
-## 使用流程
+## thủ công
 
-参考根目录下的`CMakeLists.txt`将einsum添加到自己的项目之中即可。
+Tham khảo `CMakeLists.txt` trong thư mục gốc để thêm einsum vào dự án của riêng bạn.
 
-==记得一定要在模型解析的源文件内(如这里的onnx2trt_gcn.cpp)，使用`REGISTER_TENSORRT_PLUGIN(EinsumCreator)`来注册Einsum插件，这样解析时才可以找到==
+ Hãy nhớ sử dụng `REGISTER_TENSORRT_PLUGIN (EinsumCreator) 'để đăng ký plugin Einsum trong tệp nguồn của phân tích cú pháp mô hình (chẳng hạn như onnx2trt_gcn.cpp tại đây), để có thể tìm thấy nó trong quá trình phân tích cú pháp
+ Cách sử dụng các trường hợp kiểm thử 
 
-**测试用例使用方法**
+1. Chạy `create_onnx.py` để tạo tệp onnx cho các test
+2. Biên dịch kho lưu trữ và sau đó chạy `onnnx2trt_gcn`, nếu không có lỗi nào được báo cáo, điều đó có nghĩa là không có vấn đề gì với plugin einsum
 
-1. 运行`generate_onnx.py`生成测试的onnx文件
-2. 编译该仓库，然后运行`onnnx2trt_gcn`，如果没报错就说明该einsum插件没有问题
+## quá trình
 
-## 编写流程
+1. Từ tệp plugin của TensorRT-OSS, sao chép một quy trình chính thức, sau đó viết trực tiếp vào đó và thay thế nội dung của chức năng tương ứng.
+2. Về thư viện phụ thuộc của Plugin tùy chỉnh, nó chủ yếu dựa vào các thư viện trong `TensorRT-OSS/plugin/common` và` TensorRT-(số phiên bản)/sample/common`, vì vậy các phiên bản tương ứng của `TensorRT-OSS và TensorRT được yêu cầu `Sao chép tất cả các tệp trong đường dẫn này vào một thư mục (chẳng hạn như thư mục` einsum/einsum_common * `trong repo này), sau đó sử dụng cmake để biên dịch và tạo thư viện tương ứng, đồng thời liên kết thư viện với` einsum.cpp` Just
 
-1. 从TensorRT-OSS的plugin文件内，拷贝一个官方的例程，然后直接在里面的编写就可以了，替换掉对应函数的内容即可
-2. 关于自定义Plugin的依赖库问题，他主要依赖`TensorRT-OSS/plugin/common`和`TensorRT-(版本号)/samples/common`下的库，因此要将对应版本的`TensorRT-OSS和TensorRT`该路径下的文件全部复制到一个文件夹下(如本repo中的`einsum/einsum_common*`文件夹内)，然后使用cmake编译生成对应的库，并将该库链接到`einsum.cpp`即可
+## chi tiết
+Vì ví dụ của kho lưu trữ này giống với thư viện phụ thuộc plugin của EinsumPlugin, nên `target_link_libraries (PUBLIC)` được sử dụng để kết nối thư viện với chương trình ví dụ `onnx2trt_gcn`
 
-## 细节
-
-由于本仓库的示例中与EinsumPlugin的插件依赖库相同，因此采用`target_link_libraries(PUBLIC)`将库向上连接到示例程序`onnx2trt_gcn`
-
-根目录下只会使用`onnx2trt_gcn.cpp`，其他的cpp文件不需要，可以删除。
+Chỉ `onnx2trt_gcn.cpp` được sử dụng trong thư mục gốc, các tệp cpp khác không cần thiết và có thể bị xóa.
