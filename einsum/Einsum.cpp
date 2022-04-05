@@ -67,7 +67,7 @@ inline bool is_CHW(nvinfer1::Dims const& dims)
 
 
 /**
- * @brief Einsum::~Einsum 释放op占用的显存
+ * @brief Einsum::~Einsum Giải phóng bộ nhớ video bị chiếm bởi op
  */
 Einsum::~Einsum(){
 //    std::cout<< "析构plugin类\t IN ~Plugin" << std::endl;
