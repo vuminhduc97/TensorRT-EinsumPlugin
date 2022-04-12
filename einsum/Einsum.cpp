@@ -36,7 +36,7 @@ using namespace nvinfer1::plugin;
 namespace
 {
 constexpr const char* INSTANCE_PLUGIN_VERSION{"1"};
-constexpr const char* INSTANCE_PLUGIN_NAME{"Einsum"}; //! 此时对应的plugin就叫CustomEinsum_TRT
+constexpr const char* INSTANCE_PLUGIN_NAME{"Einsum"}; //! Lúc này, plugin tương ứng được gọi là CustomEinsum_TRT
 } // namespace
 #define CHECK_CUDA(call)                                                                                               \
     do                                                                                                                 \
@@ -76,18 +76,18 @@ Einsum::~Einsum(){
 Einsum::Einsum(std::string equation)
     :equation(equation)
 {
-    std::cout << "构造Plugin\t IN 第一个构造函数，用于parse阶段" << std::endl;
+    std::cout << "Construct Plugin \ t TRONG hàm tạo đầu tiên, được sử dụng trong giai đoạn parse" << std::endl;
 }
 
 Einsum::Einsum(std::string equation, int N, int K, int C, int T, int V, int W)
     :equation(equation),N(N),K(K),C(C),T(T),V(V),W(W)
 {
-//    std::cout << "构造Plugin\t IN 第二个构造函数，用于clone" << std::endl;
+//    std::cout << "Construct Plugin\t IN hàm tạo thứ hai, cho clone" << std::endl;
 }
-//! 反序列化时读入数据
+//! Đọc dữ liệu khi deserialization
 Einsum::Einsum(void const* serialData, size_t serialLength)
 {
-//    std::cout << "构造Plugin\t IN 第三个构造函数，用于反序列化使用" << std::endl;
+//    std::cout << "Construct Plugin \ t IN constructor thứ ba để sử dụng deserialization" << std::endl;
     const char *d = reinterpret_cast<const char*>(serialData), *a = d;
     equation = read<std::string>(d);
     N = read<int>(d);
@@ -102,18 +102,18 @@ Einsum::Einsum(void const* serialData, size_t serialLength)
 // Einsum returns one output.
 int Einsum::getNbOutputs() const throw()
 {
-    std::cout << "获得输出数量\t IN getNbOutpus" << std::endl;
+    std::cout << "nhận được số lượng đầu ra\t IN getNbOutpus" << std::endl;
     return 1;
 }
 
 DimsExprs Einsum::getOutputDimensions(
     int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs, nvinfer1::IExprBuilder& exprBuilder) throw()
 {
-    std::cout << "计算输出维度\t IN Plugin::getOutputDimensions" << std::endl;
-    //! 这里是直接将输入的batch返回
+    std::cout << "Tính toán kích thước đầu ra\t IN Plugin::getOutputDimensions" << std::endl;
+    //! Đây là kết quả trả về trực tiếp của batch đầu vào
     nvinfer1::DimsExprs output;
     if(equation == "nctkv,kvw->nctw"){
-        output.nbDims = 4; //! DimsExprs的d是固定的8维数组，所以必须使用nbDims标记几维
+        output.nbDims = 4; //! D của DimsExprs là một mảng 8 chiều cố định, vì vậy nbDims phải được sử dụng để đánh dấu một số kích thước
         output.d[0] = inputs[0].d[0];
         output.d[1] = inputs[0].d[1];
         output.d[2] = inputs[0].d[2];
@@ -124,7 +124,7 @@ DimsExprs Einsum::getOutputDimensions(
 
 int Einsum::initialize() throw()
 {
-    std::cout << "初始化plugin类\t IN initialize" << std::endl;
+    std::cout << "Khởi tạo lớp plugin\t IN initialize" << std::endl;
     return 0;
 }
 
@@ -134,11 +134,11 @@ void Einsum::terminate() throw()
 
 size_t Einsum::getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
     const nvinfer1::PluginTensorDesc* outputs, int nbOutputs) const throw()
-{   //! 这里的显存占用大小是自己估计的
-    //! 计算这个op在前向过程中你认为需要的中间显存数量（自己设置）
-    std::cout << "获取工作空间大小\t IN getWorkspaceSize" << std::endl;
+{   //! Kích thước sử dụng bộ nhớ video ở đây do chính bạn ước tính
+    //! Tính dung lượng bộ nhớ video trung gian mà bạn nghĩ op này cần trong quá trình chuyển tiếp (do chính bạn thiết lập)
+    std::cout << "Nhận kích thước không gian làm việc\t IN getWorkspaceSize" << std::endl;
     size_t need_num = 0;
-    size_t res = need_num * sizeof(float); //! 计算这些数量的参数所要占据的内存空间
+    size_t res = need_num * sizeof(float); //! Tính toán không gian bộ nhớ bị chiếm bởi số lượng tham số này
     return res;
 }
 
@@ -149,22 +149,22 @@ int Einsum::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,const nvinfer1::
                             cudaStream_t stream) throw()
 {
     // printf("error code enter plugin::enqueue %d\n", (int)cudaGetLastError());
-    std::cout << "开始推理\t IN enqueue" << endl;
-    const float* x = reinterpret_cast<const float*>(inputs[0]); //! 这里inputs[0]不等于inputs[1]-45
+    std::cout << "bắt đầu infer\t IN enqueue" << endl;
+    const float* x = reinterpret_cast<const float*>(inputs[0]); //! Ở đây inputs[0] không bằng inputs[1]-45
     const float* A = reinterpret_cast<const float*>(inputs[1]);
 
-    if(false){ // debug时使用,用于打印当前插件推理时的输入输出信息
+    if(false){ // debug Khi được sử dụng, nó được sử dụng để in thông tin đầu vào và đầu ra của infer plugin hiện tại
         float* x1 = (float*)malloc(sizeof(float)*N*C*T*K*V);
         float* A1 = (float*)malloc(sizeof(float)*K*V*W);
         cudaMemcpy(x1,x,sizeof(float)*N*C*T*K*V,cudaMemcpyDeviceToHost);
         cudaMemcpy(A1,A,sizeof(float)*K*V*W,cudaMemcpyDeviceToHost);
         float A_sum = 0,x_sum=0;
-        std::cout << std::endl << "邻接矩阵A";
+        std::cout << std::endl << "ma trận kề A";
         for(int i=0; i<K*V*W; i++){
     //        printf("%10.3f",A1[i]);
             A_sum += A1[i];
         }
-        std::cout << std::endl << "输入X";
+        std::cout << std::endl << "Nhập X";
         for(int i=0; i<N*C*T*K*V; i++){
             printf("%10.3f",x1[i]);
             x_sum += x1[i];
