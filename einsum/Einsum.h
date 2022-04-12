@@ -171,8 +171,9 @@ public:
 
 
     //!
-    //! \brief configurePlugin 判断输入和输出的数据类型是否正确。也可以通过这个配置信息告诉TensorRT去选择合适的算法来调优这个模型——貌似也负责计算相关的中间变量
-    //!     我们一般写的plugin执行代码都是固定的，不要调优，所以这个主要是针对官方的op
+    //! \brief configurePlugin Xác định xem các kiểu dữ liệu đầu vào và đầu ra có chính xác hay không. 
+    // Bạn cũng có thể sử dụng thông tin cấu hình này để yêu cầu TensorRT chọn thuật toán thích hợp để điều chỉnh mô hình nó dường như cũng chịu trách nhiệm tính toán các biến trung gian có liên quan
+    //!     Mã thực thi plugin mà chúng tôi thường viết là cố định và không cần phải điều chỉnh, vì vậy điều này chủ yếu dành cho hoạt động chính thức
     //! \param in
     //! \param nbInputs
     //! \param out
@@ -183,16 +184,16 @@ public:
 
 
     //!
-    //! \brief getSerializationSize 返回序列化(serialize)该op时需要写多少字节到buffer中
-    //!     一般为权重+参数的总的字节数
+    //! \brief getSerializationSize Returns how many bytes need to be written to the buffer when serializing the op
+    //!     Nói chung, trọng số + tổng số byte của tham số
     //! \return
     //!
     size_t getSerializationSize() const throw() override;
 
 
     //!
-    //! \brief serialize 根据序列化大小getSerializationSize()，把需要用到的数据按照顺序序列化到buffer中
-    //!     就是指权重+参数+额外的内存空间(应该是中间变量吧)序列化到buffer中
+    //! \brief serialize According to the serialization size getSerializationSize(), serialize the data to be used into the buffer in order
+    //!     Có nghĩa là trọng số + tham số + không gian bộ nhớ phụ (nó phải là một biến trung gian) được tuần tự hóa vào buffer
     //! \param buffer
     //!
     void serialize(void* buffer) const throw() override;
@@ -200,11 +201,10 @@ public:
 
     // DynamicExt plugin supportsFormat update.
     //!
-    //! \brief supportsFormatCombination TensorRT调用该方法来判断pos索引对应的(输入/输出)是否支持inOut[pos].format和inOut[pos].type指定的格式和数据类型
-    //!     知乎有说，但是每读懂
-    //! 暂且认为判断输入/输出的格式和数据类型是否满足要求
-    //!     数据类型指DataType：float, half[float16], int 8, int32, bool
-    //!     格式指TensorFormat：kLINEAR，kNCHW，kNCHW2，等（暂时不懂具体啥区别）
+    //! \brief supportsFormatCombination TensorRT Call this method to determine whether the (input/output) corresponding to the pos index supports the format and data type specified by inOut[pos].format and inOut[pos].type
+    //!   Hiện tại, hãy cân nhắc xem định dạng và kiểu dữ liệu của đầu vào / đầu ra có đáp ứng yêu cầu hay không
+    //!     kiểu dữ liệu đề cập đến DataType：float, half[float16], int 8, int32, bool
+    //!     định dạng đề cập đến TensorFormat：kLINEAR，kNCHW，kNCHW2，
     //! \param pos
     //! \param inOut
     //! \param nbInputs
@@ -215,8 +215,8 @@ public:
 
 
     //!
-    //! \brief attachToContext 如果这个op使用到了一些其他东西，例如cublas handle，可以直接借助TensorRT内部提供的cublas handle
-    //!     暂时不清楚如何使用
+    //! \brief attachToContext If this op uses some other things, such as cublas handle, you can directly use the cublas handle provided by TensorRT
+    //!     Không chắc chắn về cách sử dụng nó
     //! \param cudnn
     //! \param cublas
     //! \param allocator
@@ -224,8 +224,8 @@ public:
     void attachToContext(cudnnContext* cudnn, cublasContext* cublas, nvinfer1::IGpuAllocator* allocator) throw() override;
 
     //!
-    //! \brief getPluginType 自己设置该plugin的名字和版本号（比如leakyrelu 1)
-    //!     注意：由于PluginNamespace一般默认为"",所以这里的plugin必须不能重复，否则编译报错(????待测试）
+    //! \brief getPluginType Tự đặt tên và số phiên bản của plugin (chẳng hạn như leakyrelu 1)
+    //!     Lưu ý: Vì PluginNamespace thường mặc định là "" nên plugin ở đây không được lặp lại, nếu không quá trình biên dịch sẽ báo lỗi (???? để được kiểm tra)
     //! \return
     //!
     const char* getPluginType() const throw() override;
@@ -240,7 +240,7 @@ private:
     std::string equation;
     int N,K,C,T,V,W;
     std::string mNamespace;
-//    const char* mPluginNamespace;   //! 该plugin的namepace名字，一般不设置，为""即可
+//    const char* mPluginNamespace;   //! namepace of plugin，Nói chung là không được đặt, nó là ""
     std::string mPluginNamespace;
 };
 
@@ -256,7 +256,7 @@ public:
 
 
     //!
-    //! \brief getPluginName 对应Plugin插件类中的getPluginType，getPluginVersion。 一模一样
+    //! \brief getPluginName Tương ứng với getPluginType và getPluginVersion trong lớp plugin. giống hệt nhau
     //! \return
     //!
     const char* getPluginName() const throw() override;
@@ -265,34 +265,35 @@ public:
 
     //!
     //! \brief getFieldNames
-    //!     返回PluginFieldCollection结构数据，包含添加插件的参数名和类型
-    //! \param PluginFieldCollection mFC: 这是成员变量
-    //!     主要作用是传递这个op所需要的权重和参数，在engine推理时不会使用，而在parse中使用（比如caffe2trt,onnx2trt），决定了是否可以解析成功。
-    //! 当使用parse解析这个op时，这个op的权重和参数会经历Models-->TensorRT engine --> TensorRT runtime的过程。
-    //!     具体过程参考知乎链接
+    //!     Trả về dữ liệu cấu trúc PluginFieldCollection, bao gồm tên tham số và loại của plugin đã thêm
+    //! \param PluginFieldCollection mFC: Đây là một biến thành viên
+    //!     Chức năng chính là chuyển các trọng số và tham số theo yêu cầu của op này, sẽ không được sử dụng trong engine infer, 
+    // nhưng được sử dụng trong parse (chẳng hạn như caffe2trt, onnx2trt) để xác định xem parse có thể thành công hay không.。
+    //! Khi sử dụng pparse để parse op này, trọng số và thông số của op này sẽ chuyển qua Models-->TensorRT engine --> quá trình của TensorRT runtime。
+    //!     Để biết quy trình cụ thể, vui lòng tham khảo liên kết
     //! \return
     //!
     const PluginFieldCollection* getFieldNames() throw() override;
 
 
     //!
-    //! \brief createPlugin 通过得到的PluginFieldCollection去创建一个plugin，将op需要的权重和参数取出来，然后调用插件类的第一个构造函数，来创建plugin
+    //! \brief createPlugin Tạo một plugin thông qua PluginFieldCollection thu được, lấy ra các trọng số và thông số theo yêu cầu của op, sau đó gọi hàm tạo đầu tiên của class plugin để tạo plugin
     //!
-    //! 另一种理解（参考https://github.com/LitLeo/TensorRT_Tutorial/blob/master/blogs/TensorRT%20Plugin%E4%BD%BF%E7%94%A8%E6%96%B9%E5%BC%8F%E7%AE%80%E4%BB%8B-%E4%BB%A5leaky%20relu%E5%B1%82%E4%B8%BA%E4%BE%8B.md）
-    //!     根据序列化数据，反序列化为plugin类。
-    //! 需要的参数有：
-    //!     plugin的名字，该参数非常重要，是反序列化为哪种plugin的唯一凭证
-    //!     序列化数据
-    //!     序列化后的数据的长度
-    //! \param name 该plugin的名字
-    //! \param fc   序列化所需的数据
+    //! another understanding（refer tohttps://github.com/LitLeo/TensorRT_Tutorial/blob/master/blogs/TensorRT%20Plugin%E4%BD%BF%E7%94%A8%E6%96%B9%E5%BC%8F%E7%AE%80%E4%BB%8B-%E4%BB%A5leaky%20relu%E5%B1%82%E4%B8%BA%E4%BE%8B.md）
+    //!     Theo dữ liệu được tuần tự hóa, nó được giải mã hóa thành một lớp plugin.
+    //! Các thông số bắt buộc là：
+    //!     Tên của plugin, thông số này rất quan trọng, nó là chứng chỉ duy nhất cho plugin nào cần giải mã
+    //!     dữ liệu tuần tự hóa
+    //!     độ dài của dữ liệu được tuần tự hóa
+    //! \param name tên của plugin
+    //! \param fc   Dữ liệu cần thiết để tuần tự hóa
     //! \return
     //! 02
     IPluginV2DynamicExt* createPlugin(const char* name, const nvinfer1::PluginFieldCollection* fc) throw() override;
 
 
     //!
-    //! \brief deserializePlugin 将op读取到的onnx模型的data数据反序列化到network中。调用插件类的第三个构造函数，来创建plugin
+    //! \brief deserializePlugin Deserialize the data of the onnx model read by the op into the network. Call the third constructor of the plugin class to create the plugin
     //! \param name
     //! \param serialData
     //! \param serialLength
