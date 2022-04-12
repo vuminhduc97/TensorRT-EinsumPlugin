@@ -8,14 +8,14 @@ file(GLOB_RECURSE trtlib /home/xzy/Data2/xzyLinuxInstallPackage/5TensorRT/Tensor
 message("tensort lib: in " ${trtlib})
 
 find_package(CUDA REQUIRED)
-file(GLOB_RECURSE CUDA_LIBRARIES /usr/local/cuda/lib64/*.so) # 我的电脑不知道为什么so文件导入不全，所以这里自行导入所有so，如果你的环境没问题可以不用加这一句
+file(GLOB_RECURSE CUDA_LIBRARIES /usr/local/cuda/lib64/*.so) # Máy mình không hiểu sao file so không được nhập hoàn chỉnh nên mình tự nhập toàn bộ, nếu môi trường của bạn ổn thì không cần thêm câu này
 message("cuda include : " ${CUDA_INCLUDE_DIRS})
 message("cuda lib : " ${CUDA_LIBRARIES})
 
-include_directories(${trthead} ${CUDA_INCLUDE_DIRS}) # 单独链接cuda，为了einsum_common可以调用cuda库
+include_directories(${trthead} ${CUDA_INCLUDE_DIRS}) # Liên kết cuda riêng, thư viện cuda có thể được gọi cho einsum_common
 link_libraries(${trtlib} ${CUDA_LIBRARIES})
 
-set(einsum_common_dir einsum_common7) # 设置einsum_common的版本，即tensorrt的版本，目前只支持tensorrt的8和7版本
+set(einsum_common_dir einsum_common7) # Đặt phiên bản của einsum_common, tức là phiên bản của tensorrt. Hiện tại, chỉ có các phiên bản 8 và 7 của tensorrt được hỗ trợ.
 add_subdirectory(${einsum_common_dir} einsum_common)
 
 add_library(einsumlib Einsum.cpp)
@@ -30,5 +30,5 @@ set (Einsum_Libs
     ${CUDA_LIBRARIES}
     einsum_common_lib
 )
-target_include_directories(einsumlib PUBLIC ${Einsum_Heads}) # 使用PUBLIC，使其可以往上传递，其链接的库都可以被使用einsumlib的库使用
+target_include_directories(einsumlib PUBLIC ${Einsum_Heads}) # Sử dụng PUBLIC để nó có thể được chuyển lên và các thư viện được liên kết có thể được sử dụng bởi các thư viện sử dụng einsumlib
 target_link_libraries(einsumlib PUBLIC ${Einsum_Libs})
