@@ -171,25 +171,25 @@ int Einsum::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,const nvinfer1::
         }
         std::cout << std::endl;
         printf("x_sum: %10.3f\tA_sum: %10.3f\n", x_sum,A_sum);
-        // 打印输入
-        printf("x输入维度为：\t");
+        // in đầu vào
+        printf("Kích thước đầu vào x là：\t");
         for(int i = 0; i < inputDesc[0].dims.nbDims; ++i){
             std::cout << inputDesc[0].dims.d[i] << ' ';
         }
-        printf("A邻接矩阵维度为：\t");
+        printf("Số chiều của ma trận kề của A là：\t");
         for(int i = 0; i < inputDesc[1].dims.nbDims; ++i){
             std::cout << inputDesc[1].dims.d[i] << ' ';
         }
         std::cout << std::endl;
     }
 //    float* output0 = reinterpret_cast<float*>(outputs[0]);
-    cublasHandle_t mCublas; //! 创建cublas句柄
-    cublasCreate(&mCublas); //! 这两行是固定写法，不用在意
+    cublasHandle_t mCublas; //! tạo cublas
+    cublasCreate(&mCublas); //! Hai dòng này là cố định, không cần quan tâm
     float onef{ 1.0f }, zerof{ 0.0f };
     cublasSetStream(mCublas, stream);
     if(equation == "nctkv,kvw->nctw"){
         //! nct,kv * kv,w --> nctw
-        //! 矩阵相乘X*A=(AT*XT)T
+        //! Phép nhân ma trận X*A=(AT*XT)T
         cublasSgemm(mCublas, CUBLAS_OP_N, CUBLAS_OP_N,
                     W, N*C*T, K*V,
                     &onef,
@@ -207,17 +207,17 @@ int Einsum::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,const nvinfer1::
 
 size_t Einsum::getSerializationSize() const throw()
 {
-    std::cout << "获取序列化数据大小\t IN getSerializationSize" << std::endl;
+    std::cout << "Nhận kích thước dữ liệu được serialized\t IN getSerializationSize" << std::endl;
 //    return (serialized_size(equation) +
 //            serialized_size(N) * 6
 //            );
-    return sizeof(equation) + sizeof(N) * 6; //! 不能使用上面那句话，会报错，暂不清楚原因
+    return sizeof(equation) + sizeof(N) * 6; //! Câu trên không dùng được sẽ báo lỗi, hiện tại chưa rõ lý do.
 }
 
-//! 将中间变量存入，与deserialize相对应
+//! Lưu trữ các biến trung gian, tương ứng với deserialize
 void Einsum::serialize(void* buffer) const throw()
 {
-    std::cout << "序列化数据\t IN serialize" << std::endl;
+    std::cout << "dữ liệu serialize \t IN serialize" << std::endl;
     char *d = static_cast<char*>(buffer), *a = d;
     write(d, equation);
     write(d, N);
@@ -228,19 +228,21 @@ void Einsum::serialize(void* buffer) const throw()
     write(d, W);
 }
 
-//! 检测数据类型和插件格式是否满足要求（自己设计）
-/*  这里绝对不可以直接返回true,因为这个函数的输入并非只是该层输入,有可能是别的输入,如果不加判断直接返回true,那么后续必定出错
-经过实验发现:
-    .format可以区分出输入数据是否是自己指定的该层输入,从而对不是该层输入的数据返回false
+//! Phát hiện xem kiểu dữ liệu và định dạng plugin có đáp ứng yêu cầu hay không (tự thiết kế)
+/*  Ở đây hoàn toàn không thể trả về true trực tiếp vì đầu vào của hàm này không chỉ là đầu vào của lớp này mà có thể là đầu vào khác, 
+nếu trả về true mà không có phán đoán thì lỗi tiếp theo phải là
+Được khám phá bằng thực nghiệm:
+    .Định dạng có thể phân biệt liệu dữ liệu đầu vào có phải là dữ liệu đầu vào của lớp do chính nó chỉ định hay không, 
+    để trả về giá trị false cho dữ liệu không được lớp đầu vào
 */
 bool Einsum::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* inOut, int nbInputs, int nbOutputs) throw()
 {
-    // std::cout << "判断输入输出是否符合要求\t IN supportsFormatCombination" << std::endl;
+    // std::cout << "Xác định xem đầu vào và đầu ra có đáp ứng các yêu cầu hay không \t IN supportsFormatCombination" << std::endl;
     ASSERT(inOut && pos < (nbInputs + nbOutputs));
     bool res = ((inOut[pos].type == nvinfer1::DataType::kFLOAT || inOut[pos].type == nvinfer1::DataType::kHALF)
                 && inOut[pos].format == nvinfer1::PluginFormat::kLINEAR && inOut[pos].type == inOut[0].type);
-    std::cout << "索引" << pos <<" 判断输入输出是否符合要求\t IN supportsFormatCombination\t" << res << std::endl;
+    std::cout << "mục lục" << pos <<"Xác định xem đầu vào và đầu ra có đáp ứng các yêu cầu hay không\t IN supportsFormatCombination\t" << res << std::endl;
     // printf("%d\n", inOut[pos].format == nvinfer1::PluginFormat::kLINEAR);
     return res;
     // return true;
@@ -248,19 +250,19 @@ bool Einsum::supportsFormatCombination(
 
 const char* Einsum::getPluginType() const throw()
 {
-    std::cout << "获取plugin名字\t IN getPluginType" << std::endl;
+    std::cout << "Nhận tên plugin\t IN getPluginType" << std::endl;
     return INSTANCE_PLUGIN_NAME;
 }
 
 const char* Einsum::getPluginVersion() const throw()
 {
-    std::cout << "获取plugin版本\t IN getPluginVersion" << std::endl;
+    std::cout << "Tải phiên bản plugin \t IN getPluginVersion" << std::endl;
     return INSTANCE_PLUGIN_VERSION;
 }
 
 void Einsum::destroy() throw()
 {
-    std::cout << "删除插件类\t IN destroy" << std::endl;
+    std::cout << "delete plugin class\t IN destroy" << std::endl;
     delete this;
 }
 
@@ -282,11 +284,11 @@ const char* Einsum::getPluginNamespace() const throw()
     return mPluginNamespace.c_str();
 }
 
-//! 返回输出数据的类型，和输入数据类型一致
+//! Trả về kiểu dữ liệu đầu ra giống với kiểu dữ liệu đầu vào
 nvinfer1::DataType Einsum::getOutputDataType(
     int index, const nvinfer1::DataType* inputTypes, int nbInputs) const throw()
 {
-    std::cout << "返回输出数据类型\t IN getOutputDataType" << endl;
+    std::cout << "return output data type\t IN getOutputDataType" << endl;
 //    ASSERT(inputTypes && nbInputs > 0 && index == 0);
     return inputTypes[0];
 }
@@ -294,7 +296,7 @@ nvinfer1::DataType Einsum::getOutputDataType(
 void Einsum::configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
                                          const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) throw()
 {
-    std::cout << "计算中间变量信息\t IN Plugin::configurePlugin" << std::endl;
+    std::cout << "Tính toán thông tin biến trung gian\t IN Plugin::configurePlugin" << std::endl;
     N = in[0].desc.dims.d[0];
     C = in[0].desc.dims.d[1];
     T = in[0].desc.dims.d[2];
@@ -317,16 +319,16 @@ void Einsum::detachFromContext() throw()
 }
 
 // EinsumCreator methods
-//! 对应createPlugin中的操作
-//! 初始化plugin field meta data（插件领域的元数据？）
-//!     暂且理解为该插件所用到的数据，以关键字+数据的形式存储（即PluginField)
-//! PluginField: 以变量名+值的形式存储，该plugin的数据
+//! Tương ứng với thao tác trong createPlugin
+//! khởi tạo plugin field meta data
+//!     Còn hiện tại, nó được hiểu là dữ liệu mà plugin sử dụng, được lưu trữ dưới dạng key + dâta（tức là PluginField)
+//! PluginField: Stored in the form of variable name + value, the data of the plugin
 EinsumCreator::EinsumCreator()
 {
-    std::cout << "初始化 plugin Creator 类\t IN PluginCreator" << std::endl;
-    //! 个人理解---
-    //! 使用"equation"的原因是，ONNX模型中Einsum对应的ATTRIBUTES就是equation，可以通过netron查看该结点的信息得到该结论
-    //! ONNX该plugin有几个ATTRIBUTES，就在这里添加几个，名字一定要一样，而且数据类型要对应
+    std::cout << "khởi tạo class plugin Creator\t IN PluginCreator" << std::endl;
+    //! hiểu biết cá nhân---
+    //! Lý do sử dụng "phương trình" là các ATTRIBUTES tương ứng với Einsum trong mô hình ONNX là phương trình, có thể thu được bằng cách xem thông tin của nút thông qua netron
+    //! Plugin ONNX có một số ATTRIBUTES, chỉ cần thêm một số ở đây, các tên phải giống nhau và các loại dữ liệu phải tương ứng
     mPluginAttributes.emplace_back(PluginField("equation", nullptr, PluginFieldType::kCHAR, 1));
     mFC.nbFields = mPluginAttributes.size();
     mFC.fields = mPluginAttributes.data();
@@ -344,13 +346,13 @@ const char* EinsumCreator::getPluginVersion() const throw()
 
 const PluginFieldCollection* EinsumCreator::getFieldNames() throw()
 {
-    std::cout << "获取插件信息\t IN getFieldNames" << std::endl;
+    std::cout << "Nhận thông tin plugin\t IN getFieldNames" << std::endl;
     return &mFC;
 }
 
 //!
-//! 可以认为这里是整个解析的开始，在这个函数中创建类plugin类，为其传递类equation参数-->进而才能进行plugin类内的各种操作
-//! \brief EinsumCreator::createPlugin 从parse中解析到的数据(PluginFieldCollection类型的数据)，生成插件类(Einsum)
+//! Có thể coi đây là phần mở đầu của toàn bộ phân tích Tạo một lớp plugin lớp trong hàm này, truyền tham số phương trình lớp cho nó -> rồi thực hiện các thao tác khác nhau trong lớp plugin
+//! \brief EinsumCreator::createPlugin Từ dữ liệu được parse(dữ liệu thuộc loại PluginFieldCollection), tạo một class plugin thêm (Einsum)
 //! \param name
 //! \param fc
 //! \return
@@ -358,19 +360,19 @@ const PluginFieldCollection* EinsumCreator::getFieldNames() throw()
 IPluginV2DynamicExt* EinsumCreator::createPlugin(
     const char* name, const nvinfer1::PluginFieldCollection* fc) throw()
 {
-    std::cout << "解析ONNX数据 并构建plugin类\t IN PluginCreator::createPlugin" << std::endl;
+    std::cout << "parse dữ liệu ONNX và xây dựng lớp plugin\t IN PluginCreator::createPlugin" << std::endl;
     const char* mequation;
     const PluginField* fields = fc->fields;
     for (int i = 0; i < fc->nbFields; ++i) {
-        const char* attrName = fields[i].name; //! 读取数据名
+        const char* attrName = fields[i].name; //! read data name
         if (!strcmp(attrName, "equation")) {
             // assert(fields[i].type == PluginFieldType::kCHAR);
             // strcpy(mequation,*(static_cast<const std::string*>(fields[i].data)));
-            mequation = static_cast<const char*>(fields[i].data); //! 读取数据
+            mequation = static_cast<const char*>(fields[i].data); //! read data
         }
     }
     std::cout << "equation is " << mequation << std::endl;
-    //! 创建plugin
+    //! create plugin
     Einsum* obj = new Einsum(mequation);
     obj->setPluginNamespace(mNamespace.c_str());
     return obj;
