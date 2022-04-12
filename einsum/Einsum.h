@@ -28,49 +28,49 @@ namespace nvinfer1
 {
 namespace plugin
 {
-//! 加上final，后续不可以对该类(Einsum)进行继承
+//! Với cuối cùng, lớp (Einsum) không thể được kế thừa trong tương lai
 class Einsum final : public nvinfer1::IPluginV2DynamicExt
 {
 
 public:
     /** 03
-     * @brief Einsum 用在parse阶段，用于创建该插件(op)时调用的构造函数，需要传递权值及参数
+     * @brief Einsum được sử dụng trong giai đoạn parse. Nó được sử dụng để tạo phương thức khởi tạo được gọi khi plugin (op) được tạo. Nó cần chuyển các trọng số và tham số.
      */
     Einsum(std::string equation);
     /** 04
-     * @brief Einsum 用于clone阶段，复制这个plugin时用到该构造函数
+     * @brief Einsum Được sử dụng trong giai đoạn sao chép, hàm tạo được sử dụng khi sao chép plugin này
      */
     Einsum(std::string equation, int N, int K, int C, int T, int V, int W);
     /**
-     * @brief Einsum 用于反序列化(deserialize)阶段，将序列化好的权重和参数传入该plugin并创建该op
+     * @brief Einsum Đối với giai đoạn deserialize, chuyển các thông số và trọng số được serialize vào plugin và tạo op
      * @param serialData
      * @param serialLength
      */
     Einsum(void const* serialData, size_t serialLength);
 
-    Einsum() = delete;  //! 默认构造函数必须删掉
+    Einsum() = delete;  //! Hàm tạo mặc định phải bị xóa
 
-    ~Einsum() override; //! 调用terminate释放显存，完成析构
+    ~Einsum() override; //! Call terminate to release video memory and complete destructuring
 
 
     //!
-    //! \brief clone 将这个plugin对象克隆一份给TensorRT的builder、network或者engine
-    //!     会调用上述的第二个构造函数，完成克隆
-    //!     主要用于传递不变的权重和参数，将plugin复制多份，从而被不同的engine、builder或者network使用
+    //! \brief clone Clone this plugin object to TensorRT's builder, network or engine
+    //!     Hàm tạo thứ hai ở trên sẽ được gọi để hoàn thành bản sao
+    //!     It is mainly used to pass constant weights and parameters, and to copy the plugin in multiple copies, so that it can be used by different engines, builders or networks.
     //! \return
     //!
     nvinfer1::IPluginV2DynamicExt* clone() const throw() override;
 
 
     /**
-     * @brief getNbOutputs 该op返回多少个Tensor(即几个output），一般直接返回1(一个输出)
+     * @brief getNbOutputs How many Tensors (that is, several outputs) are returned by the op, generally return 1 (one output) directly
      * @return
      */
     int getNbOutputs() const throw() override;
 
     /**
-     * @brief getOutputDataType 返回输出的数据类型（包括float, half[float16], int 8, int32, bool)
-     *      一般直接返回输入数据的数据类型，即输入输出数据类型一致
+     * @brief getOutputDataType Trả về kiểu dữ liệu của đầu ra（bao gồm float, half[float16], int 8, int32, bool)
+     *      Nói chung, kiểu dữ liệu của dữ liệu đầu vào được trả về trực tiếp, tức là kiểu dữ liệu đầu vào và đầu ra giống nhau
      * @param index
      * @param inputTypes
      * @param nbInputs
@@ -80,12 +80,13 @@ public:
 
 
     //!
-    //! \brief getOutputDimensions 获得batch的维度
-    //!     TensorRT在支持Dynamic-shape时，batch这一维度必须是explicit，也就是说，TensorRT处理的维度从以往的三维[3,-1,-1]变成了[1,3,-1,-1]。
-    //! 该函数就是返回batch的维度，上面的例子就是返回1。
-    //!     我们在这个成员函数中要做的就是根据输入维度推理出该op的输出维度（一般直接将输入维度作为输出的维度即可）
-    //!     注意：虽然输出维度是由输入维度决定的，但这个输出维度其实是内定的（也就是在计算之前已经算出来了）。
-    //! 如果该op的输出维度需要根据实际运行计算得到，是不可以的。
+    //! \brief getOutputDimensions nhận kích thước của batch
+    //!     When TensorRT supports Dynamic-shape, the batch dimension must be explicit, that is to say, the dimension processed by TensorRT has changed from the previous three-dimensional [3,-1,-1] to [1,3,-1,-1] ].
+    //! Hàm là trả về thứ nguyên của batch, ví dụ trên là trả về 1.
+    //!     Những gì chúng ta cần làm trong hàm thành viên này là suy ra thứ nguyên đầu ra của op dựa trên thứ nguyên đầu vào 
+    //      (nói chung, thứ nguyên đầu vào có thể được sử dụng trực tiếp làm thứ nguyên đầu ra)
+    //!     Lưu ý: Mặc dù thứ nguyên đầu ra được xác định bởi thứ nguyên đầu vào, nhưng thứ nguyên đầu ra này thực sự là một mặc định (nghĩa là nó đã được tính toán trước khi tính toán)。
+    //! Nếu kích thước đầu ra của op cần được tính toán theo hoạt động thực tế thì không thể。
     //! \param outputIndex
     //! \param inputs
     //! \param nbInputs
@@ -98,27 +99,33 @@ public:
 
 
     /**
-     * @brief initialize 初始化函数，在engine创建时调用(即op准备开始run之前执行)
-     *      主要初始化一些提前开辟空间的参数，一般都是cuda操作需要的参数（比如conv需要提前开辟weight和bias的显存），
-     * 算子需要这些参数，就必须提前在这里开辟显存。
-     *      注意：如果该op算子需要开辟比较大的显存空间，尽量不要自己去申请显存空间，可以使用TensorRT官方接口传过来的workspace指针来获取显存空间。
-     * 因为如果该op被一个网络调用很多次，而这个op需要开辟很多显存空间，那么TensorRT在构建network时就会根据这个插件被调用的次数开辟很多显存，
-     * 导致显存溢出。(--self：而使用workspace指针，就保证每个op都使用的同一块地址，不会导致显存溢出。所有op都在同一块空间运算，运算完一个op，
-     * 将下一个op的参数放入该空间，执行下一个op，各个op的数据无需保留，所以运行下一个op直接清除上一个op的数据即可)
+     * @brief initialize Hàm khởi tạo, được gọi khi engine được tạo (nghĩa là trước khi op sẵn sàng bắt đầu chạy)
+     *      Chủ yếu khởi tạo trước một số tham số mở ra không gian, nói chung là các tham số cần thiết cho hoạt động cuda
+     （For example, conv needs to open up the memory of weight and bias in advance），
+     * Nếu người vận hành cần những thông số này, nó phải mở trước bộ nhớ video ở đây。
+     *      Lưu ý: Nếu nhà điều hành op cần mở không gian bộ nhớ video tương đối lớn, hãy cố gắng không tự đăng ký dung lượng bộ nhớ video. 
+     Bạn có thể sử dụng con trỏ vùng làm việc được chuyển từ giao diện TensorRT chính thức để lấy dung lượng bộ nhớ video。
+     * Vì nếu op được gọi nhiều lần bởi một mạng và op này cần mở nhiều dung lượng bộ nhớ video, thì TensorRT sẽ mở rất nhiều bộ nhớ video theo số lần plugin này được gọi khi xây dựng mạng，
+     * dẫn đến tràn bộ nhớ. (--self: Sử dụng con trỏ workspace đảm bảo rằng cùng một địa chỉ được sử dụng bởi mỗi op sẽ không gây tràn bộ nhớ video. 
+     Tất cả các op hoạt động trong cùng một không gian và một op được hoàn thành sau khi hoạt động.，
+     * Đặt các tham số của lần chọn tiếp theo vào không gian này, thực hiện lần chọn tiếp theo, dữ liệu của mỗi lần chọn không cần được giữ lại, 
+     vì vậy hãy chạy lần chọn tiếp theo để xóa trực tiếp dữ liệu của lần chọn trước đó)
      * @return
      */
     int initialize() throw() override;
 
 
     /**
-     * @brief terminate 释放该op开辟的一些显存空间——用于析构函数，在engine被摧毁时调用
+     * @brief terminate Release some video memory space opened up by the op - used for destructors, called when the engine is destroyed
      */
     void terminate() throw() override;
 
 
     /**
-     * @brief getWorkspaceSize 返回该op需要的(临时显存大小)中间显存变量的实际数据大小(byte size)——一般都是使用该官方函数获取，比较规范
-     *      在这里确定这个op需要多大的显存空间去运行，这样在实际运行时就可以直接使用TensorRT开辟好的空间而不是自己去申请显存空间，避免上述显存溢出的问题。
+     * @brief getWorkspaceSize Trả về kích thước dữ liệu thực tế của biến bộ nhớ video trung gian theo yêu cầu của op (kích thước bộ nhớ video tạm thời)
+     (byte size)——Nói chung, hàm chính thức được sử dụng để lấy nó, được tiêu chuẩn hóa nhiều hơn.
+     *      Tại đây, hãy xác định dung lượng bộ nhớ video mà op này cần để chạy, để bạn có thể trực tiếp sử dụng TensorRT để mở dung lượng trong quá trình hoạt động thực tế thay vì 
+     tự đăng ký dung lượng bộ nhớ video, để tránh vấn đề tràn bộ nhớ video ở trên.。
      * @param inputs
      * @param nbInputs
      * @param outputs
@@ -130,17 +137,20 @@ public:
 
 
     /**
-     * @brief enqueue op实际执行时运行的函数
-     *      将自己实现的计算过程放在该函数内，一般为cuda实现操作（C++实现的op操作也可以放进来，不过因为时cpu执行，速度比较慢）
-     *      根据输入inputs计算输出outputs，传给相应的指针即可。
-     *      注意：如果op需要在显存中暂存一些中间变量，可以通过传进来的指针参数workspace获取
-     *      默认写的.cu是FP32精度，当TensorRT在FP16运行模式下，运行到不支持FP16的插件op时，会自动切换到FP32模式，等op运行完再切换回FP16，
-     * 因此，这样频繁的数据转换也会造成时间的消耗增加
+     * @brief enqueue Hàm chạy khi op thực sự được thực thi
+     *      Đặt quá trình tính toán do chính bạn thực hiện trong hàm này, hàm này thường được thực hiện bởi cuda 
+     (hoạt động op được thực hiện bởi C ++ cũng có thể được đưa vào, nhưng do CPU được thực thi nên tốc độ tương đối chậm)
+     *      Tính toán outputs theo inputs và chuyển nó đến con trỏ tương ứng
+     *      Lưu ý: Nếu op cần lưu trữ tạm thời một số biến trung gian trong bộ nhớ video, nó có thể được lấy thông qua workspace tham số con trỏ đến
+     *      .Cu được viết theo mặc định là độ chính xác FP32. Khi TensorRT chạy ở chế độ hoạt động FP16, khi chạy đến op plug-in không hỗ trợ FP16, 
+     nó sẽ tự động chuyển sang chế độ FP32 và sau đó chuyển trở lại FP16 sau khi op chạy.，
+     * Do đó, việc chuyển đổi dữ liệu thường xuyên như vậy cũng sẽ làm tăng thời gian tiêu thụ
      * @param inputDesc
      * @param outputDesc
      * @param inputs
      * @param outputs
-     * @param workspace 分配的工作空间的地址，通过该地址，来暂存op计算需要的中间变量，避免重复单独开辟空间
+     * @param workspace Địa chỉ của không gian làm việc được cấp phát, 
+        qua đó các biến trung gian cần thiết cho phép tính op được lưu trữ tạm thời để tránh phát triển không gian lặp lại
      * @param stream
      * @return
      */
@@ -151,9 +161,9 @@ public:
 
 
     //!
-    //! \brief setPluginNamespace 为这个插件设置namespace名字，默认是""。（一般不设置）
-    //!     注意：同一个namepace下的plugin如果名字相同会发生冲突。
-    //!     就是修改 mPluginNamespace
+    //! \brief setPluginNamespace Đặt tên namespace cho plugin này, mặc định là "". (nói chung là không đặt)
+    //!     Lưu ý: các plugin trong cùng một namespace sẽ xung đột nếu chúng có cùng tên
+    //!     sửa đổi mPluginNamespace
     //! \param pluginNamespace
     //!
     void setPluginNamespace(const char* pluginNamespace) throw() override;
